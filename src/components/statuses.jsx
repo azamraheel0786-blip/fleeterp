@@ -122,7 +122,25 @@ export default function Statuses() {
     setData(rows);
     setPageLoading(false);
   };
-
+useEffect(() => {
+  const seedStatuses = async () => {
+    const rows = await getStatuses();
+    const codes = rows.map(r => r.code.toLowerCase());
+    
+    // Add default statuses if they don't exist
+    if (!codes.includes("in-transit")) {
+      await saveStatus({ code: "in-transit", name: "In Transit" });
+    }
+    if (!codes.includes("delivered")) {
+      await saveStatus({ code: "delivered", name: "Delivered" });
+    }
+    if (!codes.includes("pending")) {
+      await saveStatus({ code: "pending", name: "Pending" });
+    }
+    await loadData();
+  };
+  seedStatuses();
+}, []);
   const handleChange   = e => setForm({ ...form, [e.target.name]: e.target.value });
   const handleSearch   = () => setSearch(form.code || form.name);
   const handleClose    = () => { setForm({ code: "", name: "" }); setSearch(""); setMessage({ text: "", type: "" }); };

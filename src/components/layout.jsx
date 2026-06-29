@@ -124,7 +124,7 @@ export default function Layout() {
 
   const renderContent = () => {
     switch (tab) {
-      case "dashboard": return <Dashboard />;
+case "dashboard": return <Dashboard onNavigate={handleNav} />;
       case "parties":   return <Parties />;
       case "items":     return <Items />;
       case "statuses":  return <Statuses />;

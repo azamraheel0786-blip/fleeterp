@@ -258,8 +258,8 @@ const CSS = `
 
 /* ─── HELPERS ─────────────────────────────────────────────────────────── */
 const Badge = ({ status }) => {
-  const map = { "Pending": "pending", "In Transit": "transit", "Delivered": "delivered", "No Movement": "nomovement" };
-  const cls = map[status] || "default";
+  const s = (status || "").toLowerCase();
+  const cls = s === "pending" ? "pending" : s === "in transit" ? "transit" : s === "delivered" ? "delivered" : s === "no movement" ? "nomovement" : "default";
   return <span className={`rp-badge rp-badge-${cls}`}>{status || "—"}</span>;
 };
 
@@ -313,8 +313,8 @@ export default function Reports() {
       d.sourceParty?.toLowerCase().includes(party.toLowerCase()) ||
       d.destParty?.toLowerCase().includes(party.toLowerCase())
     );
-    if(tab === "pending")    result = result.filter(d => { const s = map[d.doNo] || "Pending"; return s === "Pending" || s === "In Transit"; });
-    if(tab === "delivered")  result = result.filter(d => map[d.doNo] === "Delivered");
+    if(tab === "pending")    result = result.filter(d => { const s = (map[d.doNo] || "Pending").toLowerCase(); return s === "pending" || s === "in transit"; });
+    if(tab === "delivered")  result = result.filter(d => (map[d.doNo] || "").toLowerCase() === "delivered");
     if(tab === "nomovement") result = result.filter(d => !map[d.doNo]);
     setFiltered(result);
   };
@@ -347,14 +347,14 @@ export default function Reports() {
   const handlePrint = () => window.print();
 
   const handleExport = () => {
-    const rows = filtered.map((d, i) => [
-      i + 1, fmtDate(d.date),
-      `"${d.sourceParty || "—"} / ${d.destParty || "—"}"`,
-      `"${d.item || "—"}"`, d.vehicleNo || "—",
-      d.weight || "—",
-      statusMap[d.doNo] || "Pending"
-    ]);
-    const headers = ["SR", "Date", "Detail", "Item", "Vehicle #", "Weight (KG)", "Status"];
+ const rows = filtered.map((d, i) => [
+  i + 1, d.doNo || "—", fmtDate(d.date),
+  `"${d.sourceParty || "—"} / ${d.destParty || "—"}"`,
+  `"${d.item || "—"}"`, d.vehicleNo || "—",
+  d.weight || "—",
+  statusMap[d.doNo] || "Pending"
+]);
+const headers = ["SR", "DO No", "Date", "Detail", "Item", "Vehicle #", "Weight (KG)", "Status"];
     const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url  = URL.createObjectURL(blob);
@@ -365,9 +365,9 @@ export default function Reports() {
 
   /* Stats */
   const total      = allDOs.length;
-  const pending    = allDOs.filter(d => { const s = statusMap[d.doNo]; return !s || s === "Pending"; }).length;
-  const transit    = allDOs.filter(d => statusMap[d.doNo] === "In Transit").length;
-  const delivered  = allDOs.filter(d => statusMap[d.doNo] === "Delivered").length;
+  const pending    = allDOs.filter(d => { const s = (statusMap[d.doNo] || "").toLowerCase(); return !s || s === "pending"; }).length;
+  const transit    = allDOs.filter(d => (statusMap[d.doNo] || "").toLowerCase() === "in transit").length;
+  const delivered  = allDOs.filter(d => (statusMap[d.doNo] || "").toLowerCase() === "delivered").length;
   const noMovement = allDOs.filter(d => !statusMap[d.doNo]).length;
   const freight    = allDOs.reduce((s, d) => s + (Number(d.freight) || 0), 0);
 
@@ -395,6 +395,7 @@ export default function Reports() {
       <thead>
         <tr>
           <th style={{ width: "50px", textAlign: "center" }}>SR NO</th>
+          <th>DO NO</th>
           <th>DATE</th>
           <th>DETAIL</th>
           <th>ITEM</th>
@@ -406,7 +407,7 @@ export default function Reports() {
       <tbody>
         {filtered.length === 0 ? (
           <tr>
-            <td colSpan="7" className="rp-empty">
+            <td colSpan="8" className="rp-empty">
               <div className="rp-empty-icon">📋</div>
               No records found for the selected filters.
             </td>
@@ -414,6 +415,7 @@ export default function Reports() {
         ) : filtered.map((d, i) => (
           <tr key={d.id || d.doNo || i}>
             <td className="rp-cell-sr">{i + 1}</td>
+            <td className="rp-cell-id">{d.doNo || "—"}</td>
             <td className="rp-cell-date">{fmtDate(d.date)}</td>
             <td>
               <div className="rp-cell-detail">
@@ -438,6 +440,7 @@ export default function Reports() {
       <thead>
         <tr>
           <th style={{ width:"40px", textAlign:"center" }}>#</th>
+          <th>DO NO</th>
           <th>Date</th>
           <th>Detail</th>
           <th>Item</th>
@@ -449,7 +452,7 @@ export default function Reports() {
       <tbody>
         {filtered.length === 0 ? (
           <tr>
-            <td colSpan="7" className="rp-empty">
+            <td colSpan="8" className="rp-empty">
               <div className="rp-empty-icon">💰</div>No records found.
             </td>
           </tr>
@@ -458,6 +461,7 @@ export default function Reports() {
             {filtered.map((d, i) => (
               <tr key={d.id || d.doNo || i}>
                 <td className="rp-cell-sr">{i + 1}</td>
+                <td className="rp-cell-id">{d.doNo || "—"}</td>
                 <td className="rp-cell-date">{fmtDate(d.date)}</td>
                 <td>
                   <div className="rp-cell-detail">
@@ -471,7 +475,7 @@ export default function Reports() {
               </tr>
             ))}
             <tr className="rp-total-row">
-              <td colSpan="5" style={{ textAlign:"right", color:"#7C3AED" }}>Total</td>
+              <td colSpan="6" style={{ textAlign:"right", color:"#7C3AED" }}>Total</td>
               <td className="rp-cell-num">{fmt(filtered.reduce((s, d) => s + (Number(d.weight) || 0), 0))}</td>
               <td className="rp-cell-num" style={{ color:"#7C3AED" }}>{fmt(filtered.reduce((s, d) => s + (Number(d.freight) || 0), 0))}</td>
             </tr>

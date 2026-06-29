@@ -1,25 +1,17 @@
 import { useState, useEffect } from "react";
-import { getDOs }         from "../services/doservice";
-import { getParties }     from "../services/partyservice";
-import { getItems }       from "../services/itemservices";
-import { getMovements }   from "../services/movementservice";
+import { getDOs }               from "../services/doservice";
+import { getParties }           from "../services/partyservice";
+import { getItems }             from "../services/itemservices";
+import { getMovements, getLatestStatusPerDO } from "../services/movementservice";
 
-/* ─── STYLES ─────────────────────────────────────────────────────────── */
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-  .db-root {
-    font-family: 'Inter', sans-serif;
-    min-height: 100vh;
-    background: #F1F5F9;
-    padding: 0;
-  }
+  .db-root { font-family: 'Inter', sans-serif; min-height: 100vh; background: #F1F5F9; padding: 0; }
 
-  /* ── TOP BAR ── */
   .db-topbar {
     background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
-    padding: 0 32px;
-    height: 56px;
+    padding: 0 32px; height: 56px;
     display: flex; align-items: center; justify-content: space-between;
     border-bottom: 1px solid rgba(255,255,255,0.06);
   }
@@ -28,15 +20,14 @@ const CSS = `
     width: 30px; height: 30px; border-radius: 8px;
     background: linear-gradient(135deg, #2563EB, #7C3AED);
     display: flex; align-items: center; justify-content: center;
-    font-size: 11px; font-weight: 800; color: #fff; letter-spacing: 0.03em;
+    font-size: 11px; font-weight: 800; color: #fff;
   }
-  .db-app-name { font-size: 13.5px; font-weight: 700; color: #fff; letter-spacing: 0.01em; }
-  .db-app-sub  { font-size: 11px; color: #475569; margin-left: 2px; font-weight: 400; }
+  .db-app-name { font-size: 13.5px; font-weight: 700; color: #fff; }
+  .db-app-sub  { font-size: 11px; color: #475569; margin-left: 2px; }
   .db-topbar-right { display: flex; align-items: center; gap: 12px; }
   .db-date-pill {
     font-size: 11.5px; color: #94A3B8; background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08); border-radius: 7px;
-    padding: 4px 10px; font-variant-numeric: tabular-nums;
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 7px; padding: 4px 10px;
   }
   .db-avatar {
     width: 30px; height: 30px; border-radius: 50%;
@@ -45,10 +36,8 @@ const CSS = `
     font-size: 12px; font-weight: 700; color: #fff;
   }
 
-  /* ── BODY ── */
   .db-body { padding: 28px 32px; }
 
-  /* ── SECTION LABEL ── */
   .db-section-label {
     font-size: 10px; font-weight: 700; color: #94A3B8;
     text-transform: uppercase; letter-spacing: 0.12em;
@@ -56,154 +45,82 @@ const CSS = `
   }
   .db-section-label:first-child { margin-top: 0; }
 
-  /* ── KPI STRIP ── */
-  .db-kpi-strip {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 14px;
-  }
+  .db-kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
   .db-kpi {
-    background: #fff;
-    border: 1px solid #E8EDF5;
-    border-radius: 14px;
-    padding: 18px 20px;
-    box-shadow: 0 1px 6px rgba(15,23,42,0.04);
-    position: relative; overflow: hidden;
-    transition: box-shadow 0.2s, transform 0.2s;
+    background: #fff; border: 1px solid #E8EDF5; border-radius: 14px;
+    padding: 18px 20px; box-shadow: 0 1px 6px rgba(15,23,42,0.04);
+    position: relative; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s;
   }
   .db-kpi:hover { box-shadow: 0 6px 20px rgba(15,23,42,0.09); transform: translateY(-1px); }
-  .db-kpi-accent {
-    position: absolute; top: 0; left: 0; right: 0; height: 3px;
-    border-radius: 14px 14px 0 0;
-  }
-  .db-kpi-icon {
-    width: 36px; height: 36px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    margin-bottom: 12px;
-  }
-  .db-kpi-value {
-    font-size: 28px; font-weight: 800; color: #0F172A;
-    line-height: 1; font-variant-numeric: tabular-nums;
-  }
+  .db-kpi-accent { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 14px 14px 0 0; }
+  .db-kpi-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+  .db-kpi-value { font-size: 28px; font-weight: 800; color: #0F172A; line-height: 1; font-variant-numeric: tabular-nums; }
   .db-kpi-label { font-size: 12px; color: #94A3B8; margin-top: 5px; font-weight: 500; }
   .db-kpi-sub   { font-size: 11px; color: #CBD5E1; margin-top: 2px; }
 
-  /* ── TWO COL LAYOUT ── */
-  .db-two-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 16px;
-  }
+  .db-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 
-  /* ── CARD ── */
   .db-card {
-    background: #fff;
-    border: 1px solid #E8EDF5;
-    border-radius: 16px;
-    box-shadow: 0 2px 10px rgba(15,23,42,0.04);
-    overflow: hidden;
+    background: #fff; border: 1px solid #E8EDF5; border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(15,23,42,0.04); overflow: hidden;
     animation: db-rise 0.4s cubic-bezier(0.22,1,0.36,1) both;
   }
-  @keyframes db-rise {
-    from { opacity: 0; transform: translateY(14px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
+  @keyframes db-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
   .db-card-head {
     background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
-    padding: 13px 18px;
-    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 18px; display: flex; align-items: center; justify-content: space-between;
   }
   .db-card-head-left { display: flex; align-items: center; gap: 9px; }
-  .db-card-head-icon {
-    width: 28px; height: 28px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    border: 1px solid rgba(255,255,255,0.1);
-  }
+  .db-card-head-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.1); }
   .db-card-head-title { font-size: 12.5px; font-weight: 600; color: #fff; }
-  .db-card-badge {
-    font-size: 10px; font-weight: 700;
-    padding: 2px 8px; border-radius: 99px;
-    background: rgba(255,255,255,0.08); color: #94A3B8;
-    border: 1px solid rgba(255,255,255,0.08);
-  }
+  .db-card-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: rgba(255,255,255,0.08); color: #94A3B8; border: 1px solid rgba(255,255,255,0.08); }
   .db-card-body { padding: 16px 18px; }
 
-  /* ── RECENT DOs TABLE ── */
   table.db-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  table.db-table th {
-    padding: 8px 12px; text-align: left;
-    font-size: 10px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: 0.08em; color: #94A3B8; background: #F8FAFC;
-    border-bottom: 1px solid #F1F5F9;
-  }
+  table.db-table th { padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94A3B8; background: #F8FAFC; border-bottom: 1px solid #F1F5F9; }
   table.db-table td { padding: 10px 12px; border-bottom: 1px solid #F8FAFC; }
   table.db-table tr:last-child td { border-bottom: none; }
-  table.db-table tbody tr { transition: background 0.1s; }
   table.db-table tbody tr:hover { background: #F8FAFC; }
-  .db-cell-id    { color: #2563EB; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .db-cell-date  { color: #94A3B8; font-variant-numeric: tabular-nums; }
+  .db-cell-id    { color: #2563EB; font-weight: 700; }
+  .db-cell-date  { color: #94A3B8; }
   .db-cell-party { color: #374151; }
   .db-cell-muted { color: #CBD5E1; }
 
-  /* ── BADGE ── */
-  .db-badge {
-    display: inline-block; padding: 2px 9px; border-radius: 99px;
-    font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
-  }
+  .db-badge { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 10px; font-weight: 700; }
   .db-badge-pending   { background: #EFF6FF; color: #2563EB; }
   .db-badge-transit   { background: #FFFBEB; color: #B45309; }
   .db-badge-delivered { background: #F0FDF4; color: #15803D; }
   .db-badge-default   { background: #F1F5F9; color: #64748B; }
 
-  /* ── STATUS BAR ── */
-  .db-status-bar-wrap { margin: 4px 0 14px; }
-  .db-status-bar {
-    display: flex; height: 8px; border-radius: 99px; overflow: hidden; gap: 2px;
-  }
+  .db-status-bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; gap: 2px; }
   .db-status-bar-seg { border-radius: 99px; transition: flex 0.4s ease; }
   .db-status-legend  { display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap; }
   .db-status-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: #64748B; }
   .db-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-  /* ── MOVEMENT LIST ── */
   .db-movement-list { display: flex; flex-direction: column; }
-  .db-movement-row {
-    display: flex; align-items: flex-start; gap: 10px;
-    padding: 10px 0; border-bottom: 1px solid #F8FAFC;
-  }
+  .db-movement-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid #F8FAFC; }
   .db-movement-row:last-child { border-bottom: none; }
   .db-movement-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
   .db-movement-do   { font-size: 12px; font-weight: 700; color: #0F172A; }
   .db-movement-info { font-size: 11.5px; color: #64748B; margin-top: 2px; }
   .db-movement-time { font-size: 11px; color: #CBD5E1; margin-left: auto; white-space: nowrap; padding-top: 2px; }
 
-  /* ── MODULE SHORTCUTS ── */
-  .db-shortcuts {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;
-  }
+  /* ── QUICK ACCESS BUTTONS ── */
+  .db-shortcuts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
   .db-shortcut {
     background: #fff; border: 1px solid #E8EDF5; border-radius: 13px;
     padding: 14px 16px; cursor: pointer;
     display: flex; align-items: center; gap: 10px;
     transition: all 0.18s; box-shadow: 0 1px 4px rgba(15,23,42,0.04);
   }
-  .db-shortcut:hover {
-    border-color: #CBD5E1; box-shadow: 0 4px 14px rgba(15,23,42,0.08);
-    transform: translateY(-1px);
-  }
+  .db-shortcut:hover { border-color: #CBD5E1; box-shadow: 0 4px 14px rgba(15,23,42,0.08); transform: translateY(-1px); }
   .db-shortcut:active { transform: scale(0.98); }
-  .db-shortcut-icon {
-    width: 34px; height: 34px; border-radius: 9px;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
+  .db-shortcut-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .db-shortcut-label { font-size: 12px; font-weight: 600; color: #374151; line-height: 1.3; }
   .db-shortcut-sub   { font-size: 10.5px; color: #94A3B8; margin-top: 1px; }
 
-  /* ── BREAKDOWN CARD ── */
   .db-breakdown-card { margin-top: 16px; margin-bottom: 0; }
-
-  /* ── EMPTY ── */
   .db-empty { text-align: center; padding: 28px 16px; color: #CBD5E1; font-size: 12.5px; }
 
   @media (max-width: 768px) {
@@ -213,10 +130,9 @@ const CSS = `
   }
 `;
 
-/* ─── HELPERS ─────────────────────────────────────────────────────────── */
 const Badge = ({ status }) => {
-  const map = { Pending: "pending", Transit: "transit", Delivered: "delivered" };
-  const cls = map[status] || "default";
+  const s = (status || "").toLowerCase();
+  const cls = s === "pending" ? "pending" : s === "in transit" ? "transit" : s === "delivered" ? "delivered" : "default";
   return <span className={`db-badge db-badge-${cls}`}>{status || "—"}</span>;
 };
 
@@ -242,12 +158,12 @@ const todayStr = () => new Date().toLocaleDateString("en-PK", {
   weekday: "short", day: "numeric", month: "long", year: "numeric"
 });
 
-/* ─── MAIN COMPONENT ─────────────────────────────────────────────────── */
 export default function Dashboard({ onNavigate }) {
   const [dos,       setDos]       = useState([]);
   const [movements, setMovements] = useState([]);
   const [parties,   setParties]   = useState([]);
   const [items,     setItems]     = useState([]);
+  const [statusMap, setStatusMap] = useState({});
 
   useEffect(() => {
     const el = document.createElement("style");
@@ -256,33 +172,42 @@ export default function Dashboard({ onNavigate }) {
     return () => document.head.removeChild(el);
   }, []);
 
-useEffect(() => {
-  const load = async () => {
-    const [dos, movements, parties, items] = await Promise.all([
-      getDOs(), getMovements(), getParties(), getItems()
-    ]);
-    setDos(dos);
-    setMovements(movements);
-    setParties(parties);
-    setItems(items);
-  };
-  load();
-}, []);
+  useEffect(() => {
+    const load = async () => {
+      const [doList, mvs, pts, its, sMap] = await Promise.all([
+        getDOs(), getMovements(), getParties(), getItems(), getLatestStatusPerDO()
+      ]);
+      setDos(doList);
+      setMovements(mvs);
+      setParties(pts);
+      setItems(its);
+      setStatusMap(sMap);
+    };
+    load();
+  }, []);
 
-  /* ── STATS ── */
+  /* ── STATS from statusMap (latest movement status per DO) ── */
   const total     = dos.length;
-  const pending   = dos.filter(d => d.status === "Pending" || !d.status).length;
-  const transit   = dos.filter(d => d.status === "Transit").length;
-  const delivered = dos.filter(d => d.status === "Delivered").length;
+  const pending   = dos.filter(d => { const s = (statusMap[d.doNo] || "").toLowerCase(); return !s || s === "pending"; }).length;
+  const transit   = dos.filter(d => (statusMap[d.doNo] || "").toLowerCase() === "in transit").length;
+  const delivered = dos.filter(d => (statusMap[d.doNo] || "").toLowerCase() === "delivered").length;
   const freight   = dos.reduce((s, d) => s + (Number(d.freight) || 0), 0);
   const pctPending   = total ? Math.round((pending   / total) * 100) : 0;
   const pctTransit   = total ? Math.round((transit   / total) * 100) : 0;
   const pctDelivered = total ? Math.round((delivered / total) * 100) : 0;
 
- const recentDOs       = Array.isArray(dos)      ? [...dos].reverse().slice(0, 6)      : [];
-const recentMovements = Array.isArray(movements) ? [...movements].reverse().slice(0, 5): [];
-  const statusColor     = { Pending: "#2563EB", Transit: "#F59E0B", Delivered: "#22C55E" };
+  const recentDOs       = Array.isArray(dos)      ? [...dos].reverse().slice(0, 6)       : [];
+  const recentMovements = Array.isArray(movements) ? [...movements].reverse().slice(0, 5) : [];
 
+  const statusColor = (s) => {
+    const sl = (s || "").toLowerCase();
+    if (sl === "in transit") return "#F59E0B";
+    if (sl === "delivered")  return "#22C55E";
+    if (sl === "pending")    return "#2563EB";
+    return "#94A3B8";
+  };
+
+  /* ── QUICK ACCESS — uses onNavigate prop ── */
   const shortcuts = [
     { label: "Masters",          sub: "Parties & items",    tab: "masters",  bg: "#EFF6FF", ic: "#2563EB", d: "M4 7h16M4 12h16M4 17h10" },
     { label: "DO Entry",         sub: "New delivery order", tab: "doentry",  bg: "#F0FDF4", ic: "#16A34A", d: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
@@ -293,12 +218,11 @@ const recentMovements = Array.isArray(movements) ? [...movements].reverse().slic
   return (
     <div className="db-root">
 
-      {/* TOP BAR */}
       <div className="db-topbar">
         <div className="db-topbar-left">
-          <div className="db-logo">LT</div>
-          <span className="db-app-name">LogiTrack</span>
-          <span className="db-app-sub">ERP</span>
+          <div className="db-logo">FE</div>
+          <span className="db-app-name">FleetERP</span>
+          <span className="db-app-sub">Management System</span>
         </div>
         <div className="db-topbar-right">
           <div className="db-date-pill">{todayStr()}</div>
@@ -311,7 +235,6 @@ const recentMovements = Array.isArray(movements) ? [...movements].reverse().slic
         {/* KPI STRIP */}
         <div className="db-section-label">Overview</div>
         <div className="db-kpi-strip">
-
           <div className="db-kpi">
             <div className="db-kpi-accent" style={{ background: "linear-gradient(90deg,#2563EB,#6366F1)" }}/>
             <div className="db-kpi-icon" style={{ background: "#EFF6FF" }}>
@@ -375,7 +298,6 @@ const recentMovements = Array.isArray(movements) ? [...movements].reverse().slic
             </div>
             <div className="db-kpi-label">Parties</div>
           </div>
-
         </div>
 
         {/* BREAKDOWN BAR */}
@@ -433,7 +355,7 @@ const recentMovements = Array.isArray(movements) ? [...movements].reverse().slic
                         <td className="db-cell-date">{fmtDate(d.date)}</td>
                         <td className="db-cell-party">{d.sourceParty || <span className="db-cell-muted">—</span>}</td>
                         <td className="db-cell-party">{d.destParty   || <span className="db-cell-muted">—</span>}</td>
-                        <td><Badge status={d.status} /></td>
+                        <td><Badge status={statusMap[d.doNo] || "Pending"} /></td>
                       </tr>
                     ))
                   }
@@ -458,7 +380,7 @@ const recentMovements = Array.isArray(movements) ? [...movements].reverse().slic
                 : <div className="db-movement-list">
                     {recentMovements.map(m => (
                       <div key={m.id} className="db-movement-row">
-                        <div className="db-movement-dot" style={{ background: statusColor[m.status] || "#94A3B8" }} />
+                        <div className="db-movement-dot" style={{ background: statusColor(m.status) }} />
                         <div>
                           <div className="db-movement-do">{m.doNo}</div>
                           <div className="db-movement-info">
@@ -477,11 +399,12 @@ const recentMovements = Array.isArray(movements) ? [...movements].reverse().slic
 
         </div>
 
-        {/* QUICK ACCESS */}
+        {/* QUICK ACCESS — buttons now navigate! */}
         <div className="db-section-label">Quick Access</div>
         <div className="db-shortcuts">
           {shortcuts.map(s => (
-            <div key={s.tab} className="db-shortcut" onClick={() => onNavigate && onNavigate(s.tab)}>
+            <div key={s.tab} className="db-shortcut"
+              onClick={() => onNavigate && onNavigate(s.tab)}>
               <div className="db-shortcut-icon" style={{ background: s.bg }}>
                 <Ico d={s.d} color={s.ic} />
               </div>

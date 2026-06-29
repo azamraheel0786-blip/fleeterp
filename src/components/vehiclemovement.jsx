@@ -237,8 +237,8 @@ const emptyForm = () => ({
 });
 
 const Badge = ({ status }) => {
-  const map = { "Pending": "pending", "In Transit": "transit", "Delivered": "delivered" };
-  const cls = map[status] || "default";
+  const s = (status || "").toLowerCase();
+  const cls = s === "pending" ? "pending" : s === "in transit" ? "transit" : s === "delivered" ? "delivered" : "default";
   return (
     <span className={`vm-badge vm-badge-${cls}`}>
       <span className="vm-badge-dot" />
@@ -309,13 +309,18 @@ export default function VehicleMovementEntry() {
     const matched = dos.find(
       d => (d.doNo || "").toLowerCase() === value.toLowerCase()
     );
-    if (matched) {
-      setForm(f => ({
-        ...f,
-        doNo:         matched.doNo,
-        driverName:   matched.driverName   || matched.drivername   || "",
-        driverMobile: matched.driverNumber || matched.drivernumber || "",
-      }));
+  if (matched) {
+  // Convert DO date to datetime format keeping current time
+  const doDate = matched.date
+    ? matched.date + "T" + getTodayDateTime().split("T")[1]
+    : getTodayDateTime();
+  setForm(f => ({
+    ...f,
+    doNo:          matched.doNo,
+    driverName:    matched.driverName   || matched.drivername   || "",
+    driverMobile:  matched.driverNumber || matched.drivernumber || "",
+    entryDateTime: doDate,  // ← DO's date + current time
+  }));
       setAutoFilled(true);
       setTimeout(() => setAutoFilled(false), 700);
     } else {
